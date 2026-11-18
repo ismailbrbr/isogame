@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="theme-color" content="#14110e"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tavla</title>
+<style>
+:root{--bg:#14110e;--fg:#f2e9d8;--card:#2a2420;--ac:#c9a227;--mut:#a89d88;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(#2a1d12,#0d0a07);color:var(--fg);font:15px system-ui,sans-serif}
+#app.m{max-width:480px;margin:0 auto;padding:14px}
+#app.g{display:flex;flex-direction:column;height:100%;padding:6px 8px;box-sizing:border-box;gap:4px}
+h1{font-size:22px;margin:4px 0 10px}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px}
+button{font:inherit;border:0;border-radius:10px;padding:12px 16px;background:var(--ac);color:#201602;font-weight:700;width:100%;margin:5px 0}
+button.s{background:var(--card);color:var(--fg);border:1px solid #5a4e3c;font-weight:500}
+button.s.on{border-color:var(--ac);color:var(--ac);font-weight:700}
+input{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #5a4e3c;background:#14110e;color:var(--fg)}
+.sm{color:var(--mut);font-size:13px}
+label.sm{display:block;margin:10px 0 4px}
+#sb{display:flex;align-items:center;gap:6px}
+.pl{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:var(--card);border:2px solid transparent}
+.pl.t{border-color:var(--ac);box-shadow:0 0 12px #c9a22766}
+.pl .d{width:22px;height:22px;border-radius:50%;flex:none}
+.pl>div{flex:1;min-width:0}
+.pl b{font-size:24px;line-height:1}.pl small{color:var(--mut);display:flex;gap:3px;font-size:11px;white-space:nowrap;min-width:0}
+.pl small .nn{overflow:hidden;text-overflow:ellipsis;min-width:0}.pl small i{font-style:normal;flex:none}
+#el{text-align:center;font-size:11px;color:var(--mut);min-width:34px}#el b{display:block;color:var(--fg);font-size:20px}
+#st{text-align:center;font-weight:600;font-size:14px;min-height:20px}
+#bw{flex:1;min-height:0}svg{width:100%;height:100%;display:block;touch-action:manipulation}
+#bt{display:flex;gap:6px;align-items:center}#bt span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--mut)}button:disabled{opacity:.4}#bt button{width:auto;padding:8px 12px;margin:0}
+#ov{position:fixed;inset:0;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;z-index:9}
+#ov h2{font-size:clamp(40px,14vw,84px);margin:0 0 8px;line-height:1.05}
+#ov.w h2{color:#ffd34d}#ov.l h2{color:#ff6b5e}#ov p{margin:4px 0 10px;font-size:18px}#ov button{max-width:280px}
+@keyframes tumble{0%{transform:translateY(-70px) rotate(-280deg) scale(.5);opacity:0}60%{transform:translateY(8px) rotate(25deg) scale(1.12);opacity:1}100%{transform:none}}
+.roll .dg{animation:tumble .7s cubic-bezier(.2,.8,.3,1) both;transform-box:fill-box;transform-origin:center}.roll .d1{animation-delay:.12s}
+@keyframes pz{50%{opacity:.7}}.pz{animation:pz 1.2s infinite}
+</style></head><body>
+<div id="app"></div>
+<script>
+let S=null,me=0,room=null,code='',sel=null,note='',names=['',''],myName='',fu='',fr='',busy=0;
+try{fu=localStorage.tvn||''}catch(_){}
+const ix=c=>c==1?0:1, nm=c=>c==1?'Beyaz':'Siyah', $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slug=s=>String(s||'').replace(/[İIı]/g,'i').toLowerCase().replace(/ç/g,'c').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ü/g,'u').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40).replace(/-+$/,'');
+const pn=c=>!me?nm(c):(names[ix(c)]||(c==me?'Sen':'Rakip')), rn=()=>code.replace(/^tvl-/,'');
+const rd=()=>1+Math.floor(Math.random()*6);
+let hist=[];function undo(){if(!hist.length||!S||S.win)return;const q=S.seq;S=JSON.parse(hist.pop());S.seq=q+1;S.msg=pn(who())+' hamleyi geri aldı';sel=null;push()}
+let anim=0;function spin(){anim=1;setTimeout(()=>{anim=0},900)}
+function mk(){const p=Array(24).fill(0);p[23]=2;p[12]=5;p[7]=3;p[5]=5;p[0]=-2;p[11]=-5;p[16]=-3;p[18]=-5;
+ return{p,bar:[0,0],off:[0,0],turn:Math.random()<.5?1:-1,dice:[],rem:[],win:0,mars:false,sc:[0,0],mc:[0,0],g:0,msg:'',seq:1}}
+const blocked=(s,i,c)=>s.p[i]*c<0&&Math.abs(s.p[i])>=2;
+function allHome(s,c){if(s.bar[ix(c)])return false;for(let i=0;i<24;i++){if(c==1&&s.p[i]>0&&i>5)return false;if(c==-1&&s.p[i]<0&&i<18)return false}return true}
+function behind(s,i,c){for(let j=0;j<24;j++){if(c==1&&j>i&&s.p[j]>0)return true;if(c==-1&&j<i&&s.p[j]<0)return true}return false}
+function moves(s,c){const o=[],home=allHome(s,c);
+ for(const d of new Set(s.rem)){
+  if(s.bar[ix(c)]>0){const t=c==1?24-d:d-1;if(!blocked(s,t,c))o.push({src:'bar',dest:t,die:d});continue}
+  for(let i=0;i<24;i++){if(s.p[i]*c<=0)continue;const t=i-c*d;
+   if(t>=0&&t<24){if(!blocked(s,t,c))o.push({src:i,dest:t,die:d})}
+   else if(home){const dist=c==1?i+1:24-i;if(d==dist||(d>dist&&!behind(s,i,c)))o.push({src:i,dest:'off',die:d})}}}
+ return o}
+function endTurn(s){s.turn=-s.turn;s.rem=[];s.dice=[]}
+function step(s,m,c){s.rem.splice(s.rem.indexOf(m.die),1);
+ if(m.src=='bar')s.bar[ix(c)]--;else s.p[m.src]-=c;
+ if(m.dest=='off')s.off[ix(c)]++;else{if(s.p[m.dest]*c<0){s.p[m.dest]=0;s.bar[ix(-c)]++}s.p[m.dest]+=c}}
+const cl=s=>({p:s.p.slice(),bar:s.bar.slice(),off:s.off.slice(),rem:s.rem.slice()});
+function maxd(s,c){const ms=moves(s,c);if(!ms.length)return 0;if(s.rem.length==1)return 1;let b=1;
+ for(const m of ms){const t=cl(s);step(t,m,c);b=Math.max(b,1+maxd(t,c));if(b==s.rem.length)break}return b}
+function legal(s,c){let ms=moves(s,c);if(ms.length<2)return ms;const mx=maxd(s,c);
+ ms=ms.filter(m=>{const t=cl(s);step(t,m,c);return 1+maxd(t,c)==mx});
+ if(mx==1&&new Set(s.rem).size==2){const bg=Math.max(...s.rem),f=ms.filter(m=>m.die==bg);if(f.length)ms=f}return ms}
+function apply(s,m,c){step(s,m,c);
+ if(s.off[ix(c)]==15){s.win=c;s.mars=s.off[ix(-c)]==0;s.sc=s.sc||[0,0];s.mc=s.mc||[0,0];s.sc[ix(c)]++;if(s.mars)s.mc[ix(c)]++;s.g=(s.g||0)+1}
+ else if(!s.rem.length||!legal(s,c).length)endTurn(s)}
+function push(){S.seq++;render();if(room){dirty=true;flush()}}
+function who(){return me||S.turn}
+function roll(){const c=who();if(S.turn!=c||S.rem.length||S.win)return;
+ hist=[];const a=rd(),b=rd();S.dice=[a,b];S.rem=a==b?[a,a,a,a]:[a,b];S.msg='';
+ spin();if(!legal(S,c).length){S.msg=pn(c)+": hamle yok, pas";push();setTimeout(()=>{endTurn(S);S.msg='';push()},1500);return}
+ sel=null;push()}
+function tap(k){if(k==='roll'){roll();return}if(!S||S.win||!S.rem.length)return;const c=who();if(S.turn!=c)return;
+ const ms=legal(S,c);
+ if(sel!==null&&k!==sel){const cand=ms.filter(m=>m.src===sel&&m.dest===k).sort((a,b)=>a.die-b.die);
+  if(cand.length){hist.push(JSON.stringify(S));if(hist.length>12)hist.shift();S.msg='';apply(S,cand[0],c);sel=null;push();return}}
+ sel=(k!==sel&&ms.some(m=>m.src===k))?k:null;render()}
+const CID=Math.random().toString(36).slice(2),B='https://ntfy.sh/';
+let dirty=false,lastId='',es=null,net=true;
+const newer=(a,b)=>!b||(a.gid||0)>(b.gid||0)||((a.gid||0)==(b.gid||0)&&a.seq>b.seq);
+function post(o){o.f=CID;return fetch(B+code,{method:'POST',body:JSON.stringify(o)})}
+function flush(){if(!dirty||!S||!code)return;const q=S.seq;post({t:'st',st:S}).then(r=>{if(r.ok&&S.seq==q)dirty=false}).catch(()=>{})}
+function announce(){if(me&&myName)post({t:'nm',c:me,n:myName}).catch(()=>{})}
+function onMsg(o){if(!o||o.f==CID)return;
+ if(o.t=='hi'){if(me==1&&S){dirty=true;flush()}announce()}
+ if(o.t=='nm'&&me&&(o.c==1||o.c==-1)&&o.c!=me&&typeof o.n=='string'){const n=o.n.trim().slice(0,14);if(n&&names[ix(o.c)]!=n){names[ix(o.c)]=n;if(S)render()}}
+ if(o.t=='st'&&o.st&&newer(o.st,S)){const nd=o.st.dice.length&&(!S||S.dice.join()!=o.st.dice.join()||S.turn!=o.st.turn);if(nd)spin();if(S&&me&&o.st.turn==me&&S.turn!=me&&navigator.vibrate)navigator.vibrate(150);S=o.st;sel=null;hist=[];render()}}
+function feed(m){if(m.id)lastId=m.id;if(m.event=='message'){try{onMsg(JSON.parse(m.message))}catch(_){}}}
+function openES(){if(es)es.close();es=new EventSource(B+code+'/sse?since='+(lastId||'all'));
+ es.onopen=()=>{if(!net){net=true;render()}};es.onerror=()=>{if(net){net=false;render()}};
+ es.addEventListener('message',e=>{try{feed(JSON.parse(e.data))}catch(_){}})}
+function poll(){if(!code)return;fetch(B+code+'/json?poll=1&since='+(lastId||'all')).then(r=>r.text()).then(t=>{if(!net){net=true;render()}t.split('\n').forEach(l=>{try{feed(JSON.parse(l))}catch(_){}})}).catch(()=>{if(net){net=false;render()}})}
+function sync(){flush();poll();if(es&&es.readyState==2)openES()}
+function connect(cd,role,resume,base){note='';code=cd;me=role;room=1;names=['',''];names[ix(role)]=myName;
+ try{localStorage.tvl=JSON.stringify({cd,role})}catch(_){}openES();
+ setInterval(sync,10000);addEventListener('online',sync);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+ if(role==1&&!resume){S=mk();S.gid=Math.max(Date.now(),(base||0)+1);push();setTimeout(announce,700)}
+ else{render();setTimeout(()=>{post({t:'hi'}).catch(()=>{});announce()},700)}}
+function newGame(){const o=S;if(!o.win&&!confirm('Bu eli sıfırlayalım mı?'))return;S=Object.assign(mk(),{gid:o.gid,seq:o.seq+1,sc:o.sc||[0,0],mc:o.mc||[0,0],g:o.g||0});sel=null;hist=[];push()}
+function need(){const v=(fu||'').trim().replace(/\s+/g,' ').slice(0,14);if(!v){note='Önce kullanıcı adını yaz.';render();return''}
+ myName=fu=v;try{localStorage.tvn=v}catch(_){}return v}
+function roomSlug(){const s=slug(fr);if(s.length<3){note='Oda adı en az 3 harf veya rakam içermeli.';render();return''}return s}
+async function create(){if(busy)return;if(!need())return;const s=roomSlug();if(!s)return;
+ busy=1;const tp='tvl-'+s;let base=0,used=false;
+ try{const t=await(await fetch(B+tp+'/json?poll=1&since=all')).text();
+  t.split('\n').forEach(l=>{try{const m=JSON.parse(l);if(m.event!='message')return;const o=JSON.parse(m.message);if(o&&o.t=='st'&&o.st){used=true;base=Math.max(base,o.st.gid||0)}}catch(_){}})}catch(_){}
+ busy=0;
+ if(used&&!confirm('"'+s+'" odası daha önce kullanılmış. Aynı odada yeni oyun başlatılsın mı?\n\nBaşkasının kurduğu odaya girmek için "Odaya katıl"ı kullan.'))return;
+ connect(tp,1,false,base)}
+function join(){if(!need())return;const s=roomSlug();if(!s)return;connect('tvl-'+s,-1)}
+function local(){me=0;S=mk();render()}
+const leave=()=>{try{localStorage.removeItem('tvl')}catch(_){}location.reload()};
+const PIP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function dice(my){if(S.win)return'';
+ if(!S.dice.length)return my?`<g class="pz"><rect x="214" y="294" width="132" height="52" rx="26" fill="#c9a227" stroke="#7a5d10" stroke-width="2" data-p="roll"/><text x="280" y="327" text-anchor="middle" font-size="20" font-weight="800" fill="#2a1d05" style="pointer-events:none">ZAR AT</text></g>`:`<text x="280" y="318" text-anchor="middle" font-size="15" font-weight="700" fill="#d9e8dd">${esc(pn(S.turn).slice(0,12))}</text><text x="280" y="338" text-anchor="middle" font-size="14" fill="#d9e8dd">zar atıyor…</text>`;
+ let g='';const r=[...S.rem];
+ S.dice.forEach((v,j)=>{const x=222+j*66,y=296,u=r.indexOf(v),used=u<0;if(!used)r.splice(u,1);
+  g+=`<g class="dg d${j}" opacity="${used?.3:1}"><rect x="${x}" y="${y}" width="48" height="48" rx="10" fill="#fbf7ea" stroke="#9a8f70" stroke-width="2"/>`+PIP[v].map(i=>`<circle cx="${x+12+(i%3)*12}" cy="${y+12+Math.floor(i/3)*12}" r="4.2" fill="${v==1?'#c0392b':'#222'}"/>`).join('')+'</g>'});
+ if(S.dice[0]==S.dice[1])g+=`<text x="280" y="364" text-anchor="middle" font-size="14" fill="#fff">×${S.rem.length}</text>`;
+ return g}
+function board(){const W=28,X=c=>c<6?c*W:c*W+W,H=640,PL=268;
+ let g=`<defs><linearGradient id="gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecd29c"/><stop offset="1" stop-color="#b98d4c"/></linearGradient><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#96592b"/><stop offset="1" stop-color="#5a3216"/></linearGradient><radialGradient id="cw" cx=".35" cy=".3"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#cdc2a0"/></radialGradient><radialGradient id="cb" cx=".35" cy=".3"><stop offset="0" stop-color="#62626a"/><stop offset="1" stop-color="#0e0e10"/></radialGradient><linearGradient id="wd" x1="0" x2="1"><stop offset="0" stop-color="#5e371a"/><stop offset="1" stop-color="#3a200d"/></linearGradient><pattern id="fe" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#2a6a4c"/><path d="M0 6L6 0" stroke="#32785a" stroke-width="1"/></pattern></defs><rect width="390" height="${H}" fill="url(#fe)"/>`;
+ const my=S&&!S.win&&S.turn==who(),mv=(my&&S.rem.length)?legal(S,who()):[];
+ const dests=sel===null?[]:mv.filter(m=>m.src===sel).map(m=>m.dest),srcs=sel===null?new Set(mv.map(m=>m.src)):new Set();
+ const chk=(x,y,c,t)=>`<circle cx="${x}" cy="${y}" r="12.5" fill="url(#${c==1?'cw':'cb'})" stroke="${c==1?'#a99d78':'#000'}" stroke-width="1.5"/><circle cx="${x}" cy="${y}" r="8" fill="none" stroke="${c==1?'#c4b98f':'#4a4a52'}" stroke-width="1.2"/>`+(t?`<text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="700" fill="${c==1?'#222':'#fff'}">${t}</text>`:'');
+ for(let col=0;col<12;col++)for(const top of[1,0]){
+  const i=top?12+col:11-col,x=X(col),f=i%2?'url(#gl)':'url(#gd)',hy=top?0:H-PL-6;
+  g+=top?`<polygon points="${x+1},3 ${x+W-1},3 ${x+W/2},${PL}" fill="${f}"/>`:`<polygon points="${x+1},${H-3} ${x+W-1},${H-3} ${x+W/2},${H-PL}" fill="${f}"/>`;
+  const n=Math.abs(S.p[i]),c=S.p[i]>0?1:-1,sh=Math.min(n,7);
+  for(let k=0;k<sh;k++)g+=chk(x+14,top?17+k*26:H-17-k*26,c,k==6&&n>7?n:0);
+  if(sel===i)g+=`<rect x="${x}" y="${hy}" width="${W}" height="${PL+6}" fill="none" stroke="#ffd34d" stroke-width="3"/>`;
+  else if(srcs.has(i))g+=`<rect x="${x+1}" y="${hy}" width="${W-2}" height="${PL+6}" fill="none" stroke="#ffd34d" stroke-dasharray="4 4" opacity=".5"/>`;
+  if(dests.includes(i))g+=`<circle cx="${x+14}" cy="${top?17+sh*26:H-17-sh*26}" r="10" fill="#3ddc84" opacity=".9"/>`;
+  g+=`<rect x="${x}" y="${hy}" width="${W}" height="${PL+6}" fill="transparent" data-p="${i}"/>`}
+ g+=`<rect x="168" y="0" width="28" height="${H}" fill="url(#wd)"/>`;
+ for(let k=0;k<Math.min(S.bar[0],5);k++)g+=chk(182,352+k*26,1,S.bar[0]>5&&k==4?S.bar[0]:0);
+ for(let k=0;k<Math.min(S.bar[1],5);k++)g+=chk(182,288-k*26,-1,S.bar[1]>5&&k==4?S.bar[1]:0);
+ g+=`<rect x="168" y="0" width="28" height="${H}" fill="${sel==='bar'?'#ffd34d22':'transparent'}" stroke="${sel==='bar'?'#ffd34d':'none'}" stroke-width="3" data-p="bar"/>`;
+ g+=`<rect x="364" y="0" width="26" height="${H}" fill="${dests.includes('off')?'#3ddc84':'url(#wd)'}" data-p="off"/>`;
+ if(S.off[1]>0)g+=chk(377,24,-1,S.off[1]);if(S.off[0]>0)g+=chk(377,H-24,1,S.off[0]);
+ g+=`<rect x="3" y="3" width="384" height="${H-6}" rx="6" fill="none" stroke="#6b3f1d" stroke-width="6" style="pointer-events:none"/>`;
+ return g+dice(my)}
+function ov(){const m=S.mars,iw=!me||S.win==me,sc=S.sc||[0,0],A=me||1;let h,t;
+ if(!me){h=nm(S.win)+' kazandı';t=m?'Mars! (2 puan)':'1 puan'}
+ else if(iw){h='Kazandınız';t=m?'Mars yaptınız · 2 puan':'1 puan'}
+ else{h=m?'Mars oldunuz':'Kaybettiniz';t=m?'2 puan gitti':''}
+ return`<div id="ov" class="${iw?'w':'l'}"><h2>${iw?'🏆 ':''}${h}</h2><p>${t}</p><p>${esc(pn(A))} ${sc[ix(A)]} – ${sc[ix(-A)]} ${esc(pn(-A))} · ${S.g} el oynandı</p><button id="nx">Yeni el</button></div>`}
+function render(){const a=$('app');
+ if(!S){a.className='m';a.innerHTML='<h1>🎲 Tavla</h1>'+(room?`<div class="card">Oyun yükleniyor / rakip bekleniyor…<br><span class="sm">Oda: <b>${esc(rn())}</b> · ${esc(myName||'Sen')}</span>${me==-1?'<p class="sm">Oda adı doğruysa, odayı kuran kişinin oyunu başlatmış olması gerekir.</p>':''}<button class="s" id="bx">Odadan çık</button></div>`:
+ `<div class="card"><label class="sm" for="un">Kullanıcı adın</label><input id="un" maxlength="14" autocomplete="nickname" placeholder="Adını yaz (ör. İsmail)" value="${esc(fu)}">
+ <label class="sm" for="cd">Oda adı</label><input id="cd" maxlength="40" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Oda adını sen yaz (ör. ahbap-masasi)" value="${esc(fr)}">
+ <button id="b1">Oda kur</button><button class="s" id="b2">Odaya katıl</button>
+ <p class="sm">Biri "Oda kur"a basar. Arkadaşı kendi kullanıcı adını ve aynı oda adını yazıp "Odaya katıl"a basar. Büyük/küçük harf ve Türkçe karakter fark etmez. Oda adını bilen herkes girebilir, tahmin edilmesi zor bir ad seç.</p>
+ <button class="s" id="b3">Tek telefonda oyna</button><p class="sm">${note}</p></div>`);
+  if(room)$('bx').onclick=leave;else{$('b1').onclick=create;$('b2').onclick=join;$('b3').onclick=local;$('un').oninput=e=>{fu=e.target.value};$('cd').oninput=e=>{fr=e.target.value}}return}
+ a.className='g';
+ const c=who(),my=S.turn==c,loc=!me,sc=S.sc||[0,0],mc=S.mc||[0,0],ps=loc?[1,-1]:[me,-me],pre=loc?nm(c)+': ':'';
+ const pl=q=>`<div class="pl ${S.turn==q&&!S.win?'t':''}"><span class="d" style="background:${q==1?'#f6f0de':'#222'};border:2px solid ${q==1?'#a99d78':'#666'}"></span><div><b>${sc[ix(q)]}</b><small><span class="nn">${esc(pn(q))}</span><i>· mars ${mc[ix(q)]}</i></small></div></div>`;
+ const t=S.win?'':S.msg||(my?pre+(S.rem.length?'Hamle yap':'Zarı at'):pn(S.turn)+' oynuyor…');
+ const cu=hist.length>0&&!S.win;
+ a.innerHTML=`<div id="sb">${pl(ps[0])}<div id="el"><b>${S.win?(S.g||0):(S.g||0)+1}</b>el</div>${pl(ps[1])}</div>
+ <div id="st">${room?(net?'🟢 ':'🔴 '):''}${esc(t)}</div>
+ <div id="bw"><svg class="${anim?'roll':''}" viewBox="0 0 390 640">${board()}</svg></div>
+ <div id="bt"><span>${room?'Oda: '+esc(rn())+' · '+esc(pn(me))+' ('+nm(me)+')':'Tek telefon'}</span><button class="s ${cu?'on':''}" id="u" ${cu?'':'disabled'}>↩ Geri al</button><button class="s" id="n">Yeni el</button><button class="s" id="x">Çık</button></div>${S.win?ov():''}`;
+ $('u').onclick=undo;$('n').onclick=newGame;$('x').onclick=leave;
+ if($('nx'))$('nx').onclick=newGame;
+ a.querySelector('svg').onclick=e=>{const p=e.target.dataset&&e.target.dataset.p;if(p===undefined)return;tap(p=='bar'||p=='off'||p=='roll'?p:+p)}}
+try{const sv=JSON.parse(localStorage.tvl||'null');if(sv&&sv.cd){myName=localStorage.tvn||'';connect(sv.cd,sv.role,1)}}catch(_){}
+render();
+</script></body></html>
